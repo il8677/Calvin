@@ -17,6 +17,9 @@ parsedLinks = []
 parsedLinksCount = 0
 
 q=queue.Queue
+threads = []
+threads2 = []
+currentThreadsActive = 0
 
 def getGeneratorLen(gen):
     count=0
@@ -45,53 +48,52 @@ def getMainInformation(text, searchString):
         position=1
         indexies = find_all(text, searchString)
         for index in indexies:
-            print("[DEBUG : MAIN INFO] Interating through index " + str(position) + "/" + str(getGeneratorLen(indexies)))
+            #print("[DEBUG : MAIN INFO] Interating through index " + str(position) + "/" + str(getGeneratorLen(indexies)))
             sentanceEnd = getNextStringIndexFromIndex(text, ".", index)
             final+=text[index:sentanceEnd]
             final+="\n"
             position+=1
     return final
 def summarise(link,word):
-    print("Parsing " + link)
+    #print("Parsing " + link)
     try:
         with urllib.request.urlopen(link) as source:  # Parse Wikipedia Page
             http = source.read()
         soup = BeautifulSoup(http, 'html.parser')
     except ValueError:
-        print(link + " is not a valid link!")
+        #print(link + " is not a valid link!")
         return -1
 
 
     # Inform user
-    print("Parsed " + soup.title.string)
-    print("Getting paragraph text...")
+    #print("Parsed " + soup.title.string)
+    #print("Getting paragraph text...")
     paragraph = soup.p.getText()
-    print("Retrived text")
-    print("Retriving important information...")
+    #print("Retrived text")
+    #print("Retriving important information...")
     if (word not in paragraph):
-        print("Error, search string " + word + " has no occurance, trying non-plural form")
+        #print("Error, search string " + word + " has no occurance, trying non-plural form")
         if(word not in paragraph):
-            print("Non-Plural valid")
+            #print("Non-Plural valid")
             final = getMainInformation(paragraph, word[:-1])
             return final
         else:
-            print("Plural invalid")
+            #print("Plural invalid")
             return -1
     else:
         final=getMainInformation(paragraph, word)
-        if (getMainInformation(paragraph, word) == paragraph):
-            print("Parsed text is the same as summarised text")
     return final
 def getWebsiteExists(link):
     try:
         urllib.request.urlopen(link)
     except:
-        print(link + " is not a valid link!")
+        #print(link + " is not a valid link!")
         return -1
     return 0
 
 parsedInformation={}
 def getLinkInfo(aElement, betweenTag,word):
+    global currentThreadsActive
     if (aElement.string != "None"):
         try:
             if (len(betweenTag.split(" ")) > 1 or word == betweenTag):
@@ -99,35 +101,38 @@ def getLinkInfo(aElement, betweenTag,word):
             else:
                 parseLink = aElement.get("href")
                 if (str(parseLink) == "None"):
-                    print("Passing due to missing href")
+                    #print("Passing due to missing href")
                     return
                 if (parseLink[0:6] == "/wiki/"):
                     parseLink = "https://en.wikipedia.org" + parseLink
-                    print("Link not formatted correctly, correcting to " + parseLink)
+                    #print("Link not formatted correctly, correcting to " + parseLink)
                 if ("File:" in parseLink or "Main_Page" in parseLink or parseLink == "https://wikimediafoundation.org/"):
-                    print("Continuing due to file or main page")
+                    #print("Continuing due to file or main page")
                     return
                 if (any(parseLink in str(s) for s in parsedLinks)):
-                    print("Passing due to already parsed " + betweenTag)
+                    #print("Passing due to already parsed " + betweenTag)
                     return
                 parsedLinks.append(parseLink)
                 if (getWebsiteExists(parseLink) == -1):
                     return
                 else:
                     parsedInformation[betweenTag] = summarise(parseLink, betweenTag)
-                    print("Thread Completed")
+                    print("Thread " + str(threading.current_thread()) + "/" + str(currentThreadsActive)  + " Completed")
+                    currentThreadsActive-=1
+
         except AttributeError:
             return
     else:
         return
 def readLinks(link,word):
+    global threads
+    global currentThreadsActive
     print("Parsing links to level " + str(HYPER_EXPANSION_LIMIT) + "...")
     checkedLinks = 0
 
     with urllib.request.urlopen(link) as source:  # Parse Wikipedia Page
         HTTP = source.read()
     SOUP = BeautifulSoup(HTTP, 'html.parser')
-    threads = []
     threadtimes = []
     linkCount = len(SOUP.find_all("a"))
 
@@ -137,7 +142,7 @@ def readLinks(link,word):
         betweenTag = aElement.getText()
         checkedLinks += 1
         threads.append(threading.Thread(target=getLinkInfo, args=(aElement,betweenTag,word)))
-
+        currentThreadsActive += 1
     print("Starting Threads")
     for thread in threads:
         thread.start()
@@ -148,7 +153,7 @@ def readLinks(link,word):
         threads[i].join()
     print("Parsed " + str(parsedLinksCount) + " links, check " + str(checkedLinks))
     sleep(3)
-    print(parsedInformation)
+    #print(parsedInformation)
     pickle.dump(parsedInformation, open("save.p", "wb"))
 
 def go(action):
@@ -173,9 +178,9 @@ def go(action):
 def getParsedInformation():
     return parsedInformation
 def listParsedInformation(slow = False):
-    print("Learnt topics:")
+    #print("Learnt topics:")
     for key in parsedInformation.keys():
-        print(key)
+        #print(key)
         if(slow):
             sleep(0.5)
 def searchParsedInformation(text, slow = False):
@@ -192,8 +197,7 @@ def queryParsedInformation(text, slow= False):
                 occured = True
         except:
             continue
-    if(not occured):
-        print("No occurance found")
+
 def getInformation(key):
     return
 
@@ -204,11 +208,35 @@ def filter():
         delete=False
         for letter in key:
             if letter not in alphabet:
-                print(key + " is not english")
+                #print(key + " is not english")
                 delete=True
         if not delete:
             newList[key] = parsedInformation[key]
     parsedInformation=newList
+
+def selfExpand(initialLink, word, recursive = False):
+    global currentThreadsActive
+    print("\t\t\t EXPANDING ON " + initialLink)
+    sleep(1)
+    summarise(initialLink,word)
+    with urllib.request.urlopen(initialLink) as source:  # Parse Wikipedia Page
+        HTTP = source.read()
+    SOUP = BeautifulSoup(HTTP, 'html.parser')
+    linkCount = len(SOUP.find_all("a"))
+    title=SOUP.find("div", {"id" : "firstHeading"})
+    for aElement in SOUP.find_all("a"):
+        betweenTag = aElement.getText()
+        print("Reading " + betweenTag)
+        threads2.append(threading.Thread(target=getLinkInfo, args=(aElement,betweenTag, title)))
+        currentThreadsActive += 1
+    sleep(1)
+    for thread in threads2:
+        thread.start()
+        thread.join()
+    for aElement in SOUP.find_all("a"):
+        if (getWebsiteExists(aElement.get("href"))):
+            print("Valid link found, recursing.")
+            selfExpand(aElement.get("href"), aElement.getText)
 
 """
 GET
@@ -226,8 +254,9 @@ GO [COMMAND]
     Parse
         Parses a specific link
     Load
-        Loads a specific link
-
+        Loads the save file
+    Save
+        Saves to save file
 QUIT
     Exits info stream
 
@@ -240,6 +269,8 @@ FILTER
     Takes all the non-english keys out
 """
 def takeAction(action):
+    global threads
+    global currentThreadsActive
     if (action[0] == "GET"):
         return("Information on " + action[1] + ":\n" + parsedInformation[action[1]])
     elif (action[0] == "LIST"):
@@ -294,14 +325,21 @@ def takeAction(action):
         filter()
     elif (action[0] == "PRINT"):
         return(parsedInformation)
+    elif (action[0] == "LEARN"):
+        threads.append(threading.Thread(target=selfExpand, args=(HYPER_DEFAULT_LINK, HYPER_DEFAULT_SEARCH)))
+        currentThreadsActive+=1
     else:
         return("Error, not valid command")
         sleep(0.2)
+
     sleep(0.2)
 def main():
     print(parsedInformation)
     print("Initiating info loop")
     while True:
+        for thread in threads:
+            print("Starting Thread")
+            thread.start()
         action = input("What should I do?\n")
         action = action.upper()
         action = action.split(" ")

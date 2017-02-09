@@ -15,4 +15,3 @@ def checkFiles():
         print("[HEURISTICS : CHECK] Manifest missing, creating")
         open(manifest,"w")
 
-checkFiles()
