@@ -20,6 +20,8 @@ parsedLinksCount = 0
 q = queue.Queue
 threads = []
 threads2 = []
+times=[]
+
 currentThreadsActive = 0
 
 
@@ -107,6 +109,7 @@ parsedInformation = {}
 
 def getLinkInfo(aElement, betweenTag, word):
     global currentThreadsActive
+    startTime = time()
     if aElement.string != "None":
         try:
             if len(betweenTag.split(" ")) > 1 or word == betweenTag:
@@ -131,7 +134,14 @@ def getLinkInfo(aElement, betweenTag, word):
                     return
                 else:
                     parsedInformation[betweenTag] = summarise(parseLink, betweenTag)
-                    print("Thread " + str(threading.current_thread()) + "/" + str(currentThreadsActive) + " Completed")
+                    endtime = time()
+                    timeSpent = math.floor((endtime-startTime) * currentThreadsActive-1)
+                    times.append(timeSpent)
+                    totalTimeSpent = 0
+                    for t in times:
+                        totalTimeSpent+=t
+                    averageTimeSpent = totalTimeSpent/len(times)
+                    print("Thread " + str(threading.current_thread()) + "/" + str(currentThreadsActive) + " Completed, " + str(averageTimeSpent/60) + "m Remaining")
                     currentThreadsActive -= 1
 
         except AttributeError:
@@ -261,7 +271,7 @@ def selfExpand(initialLink, word):
         thread.join()
     for aElement in SOUP.find_all("a"):
         if getWebsiteExists(aElement.get("href")):
-            print("Valid link found, recursing.")
+            print("Valid link " + aElement.get("href") + " found, recursing.")
             selfExpand(aElement.get("href"), aElement.getText)
 
 
@@ -303,6 +313,7 @@ def takeAction(action):
     if action[0] == "GET":
         return "Information on " + action[1] + ":\n" + parsedInformation[action[1]]
     elif action[0] == "LIST":
+        print("Listing " + str(len(parsedInformation)) + " entries")
         try:
             if action[1] == "SLOW":
                 if True:
