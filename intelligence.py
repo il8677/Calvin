@@ -14,6 +14,8 @@ HYPER_DEFAULT_THREAD_TIMEOUT = 100
 
 alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_=+{}[]'\\./,<>?:\";'1234567890 "
 
+status = ""
+
 parsedLinks = []
 parsedLinksCount = 0
 
@@ -89,10 +91,11 @@ def summarise(link, word):
             return final
         else:
             # print("Plural invalid")
-            return -1
+            final = 0
     else:
         final = getMainInformation(paragraph, word)
-    return final
+    if(final != 0):
+        return final
 
 
 def getWebsiteExists(link):
@@ -109,6 +112,7 @@ parsedInformation = {}
 
 def getLinkInfo(aElement, betweenTag, word):
     global currentThreadsActive
+    global status
     startTime = time()
     if aElement.string != "None":
         try:
@@ -133,7 +137,7 @@ def getLinkInfo(aElement, betweenTag, word):
                 if getWebsiteExists(parseLink) == -1:
                     return
                 else:
-                    parsedInformation[betweenTag] = summarise(parseLink, betweenTag)
+                    parsedInformation[betweenTag.upper()] = summarise(parseLink, betweenTag)
                     endtime = time()
                     timeSpent = math.floor((endtime-startTime) * currentThreadsActive-1)
                     times.append(timeSpent)
@@ -143,7 +147,7 @@ def getLinkInfo(aElement, betweenTag, word):
                     for t in times:
                         totalTimeSpent+=t
                     averageTimeSpent = math.floor(totalTimeSpent/len(times))
-                    print("Thread " + str(threading.current_thread()) + "/" + str(currentThreadsActive) + " Completed, " + str(math.floor(averageTimeSpent/60)) + "m Remaining")
+                    status = str(math.floor(averageTimeSpent/60)) + "m Remaining"
                     currentThreadsActive -= 1
                     del threads[threads.find(threading.current_thread())]
         except AttributeError:
@@ -191,12 +195,12 @@ def go(action):
     if action == "PARSE":
         link = input("What do you want me to parse?\n")
         word = input("What do you want me to learn about?\n")
-        parsedInformation[word] = summarise(link, word)
+        parsedInformation[word.upper] = summarise(link, word)
         readLink = True
     elif action == "TEST":
         link = HYPER_DEFAULT_LINK
         word = HYPER_DEFAULT_SEARCH
-        parsedInformation[word] = summarise(link, word)
+        parsedInformation[word.upper] = summarise(link, word)
         readLink = True
     elif action == "LOAD":
         parsedInformation = pickle.load(open("save.p", "rb"))
@@ -213,20 +217,23 @@ def getParsedInformation():
 
 def listParsedInformation(slow=False):
     # print("Learnt topics:")
-    for key in parsedInformation.keys():
+    keys = parsedInformation.keys()
+    for key in keys:
         print(key)
         if slow:
             sleep(0.5)
 
 
 def searchParsedInformation(text):
-    for key in parsedInformation.keys():
+    keys = parsedInformation.keys()
+    for key in keys:
         if text in key or key in text:
             print(key)
 
 
 def queryParsedInformation(text):
-    for key in parsedInformation.keys():
+    keys = parsedInformation.keys()
+    for key in keys:
         try:
             print(parsedInformation[key])
             if text in parsedInformation[key]:
@@ -242,20 +249,25 @@ def getInformation(key):
 def filter():
     global parsedInformation
     newList = {}
-    for key in parsedInformation.keys():
+    keys = parsedInformation.keys()
+    for key in keys:
         delete = False
         for letter in key:
             if letter not in alphabet:
                 # print(key + " is not english")
                 delete = True
+        if type(parsedInformation[key]) != str:
+            delete = True
         if not delete:
             newList[key] = parsedInformation[key]
+
+
     parsedInformation = newList
 
 
 def selfExpand(initialLink, word):
     global currentThreadsActive
-    print("\t\t\t EXPANDING ON " + initialLink)
+    print("Expanding on " + initialLink)
     sleep(1)
     summarise(initialLink, word)
     with urllib.request.urlopen(initialLink) as source:  # Parse Wikipedia Page
@@ -264,7 +276,6 @@ def selfExpand(initialLink, word):
     title = SOUP.find("div", {"id": "firstHeading"})
     for aElement in SOUP.find_all("a"):
         betweenTag = aElement.getText()
-        print("Reading " + betweenTag)
         threads2.append(threading.Thread(target=getLinkInfo, args=(aElement, betweenTag, title)))
         currentThreadsActive += 1
     sleep(1)
@@ -318,7 +329,7 @@ def takeAction(action):
     global threads
     global currentThreadsActive
     if action[0] == "GET":
-        return "Information on " + action[1] + ":\n" + parsedInformation[action[1]]
+        return "Information on " + action[1] + ":\n" + str(parsedInformation[action[1]])
     elif action[0] == "LIST":
         print("Listing " + str(len(parsedInformation)) + " entries")
         try:
@@ -374,10 +385,19 @@ def takeAction(action):
         threads.append(threading.Thread(target=selfExpand, args=(HYPER_DEFAULT_LINK, HYPER_DEFAULT_SEARCH)))
         currentThreadsActive += 1
     elif action[0] == "THREADS":
-        print(threads)
-        for thread in threads:
-            print(thread)
-            sleep(0.3)
+        if(len(threads) + len(threads2) > 15):
+            print("There are " + str(len(threads2) + len(threads)) + " threads, display? y/n")
+            if(input("").upper() == "y"):
+                print("First Threads")
+                for thread in threads:
+                    print(thread)
+                    sleep(0.3)
+                print("Level two threads")
+                for thread in threads2:
+                    print(thread)
+                    sleep(0.3)
+    elif action[0] == "STATUS":
+        print(status)
     else:
         return "Error, not valid command"
     sleep(0.2)
