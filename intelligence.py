@@ -137,13 +137,15 @@ def getLinkInfo(aElement, betweenTag, word):
                     endtime = time()
                     timeSpent = math.floor((endtime-startTime) * currentThreadsActive-1)
                     times.append(timeSpent)
+                    if len(times) > 10:
+                        del times[0]
                     totalTimeSpent = 0
                     for t in times:
                         totalTimeSpent+=t
-                    averageTimeSpent = totalTimeSpent/len(times)
-                    print("Thread " + str(threading.current_thread()) + "/" + str(currentThreadsActive) + " Completed, " + str(averageTimeSpent/60) + "m Remaining")
+                    averageTimeSpent = math.floor(totalTimeSpent/len(times))
+                    print("Thread " + str(threading.current_thread()) + "/" + str(currentThreadsActive) + " Completed, " + str(math.floor(averageTimeSpent/60)) + "m Remaining")
                     currentThreadsActive -= 1
-
+                    del threads[threads.find(threading.current_thread())]
         except AttributeError:
             return
     else:
@@ -269,10 +271,11 @@ def selfExpand(initialLink, word):
     for thread in threads2:
         thread.start()
         thread.join()
+    print("Threads done")
     for aElement in SOUP.find_all("a"):
-        if getWebsiteExists(aElement.get("href")):
-            print("Valid link " + aElement.get("href") + " found, recursing.")
-            selfExpand(aElement.get("href"), aElement.getText)
+        if getWebsiteExists(aElement.get("href")) > 0:
+            print("Valid link " + str(aElement.get("href")) + " found, recursing.")
+            selfExpand(str(aElement.get("href")), aElement.getText)
 
 
 """
@@ -304,6 +307,10 @@ QUERY [STRING]
     Searches keys and text bodies for a string
 FILTER
     Takes all the non-english keys out
+LEARN
+    Start the background load process
+THREADS
+    Lists the threads
 """
 
 
@@ -366,6 +373,11 @@ def takeAction(action):
     elif action[0] == "LEARN":
         threads.append(threading.Thread(target=selfExpand, args=(HYPER_DEFAULT_LINK, HYPER_DEFAULT_SEARCH)))
         currentThreadsActive += 1
+    elif action[0] == "THREADS":
+        print(threads)
+        for thread in threads:
+            print(thread)
+            sleep(0.3)
     else:
         return "Error, not valid command"
     sleep(0.2)
@@ -377,7 +389,10 @@ def main():
     while True:
         for thread in threads:
             if not thread.isAlive():
-                thread.start()
+                try:
+                    thread.start()
+                except RuntimeError:
+                    continue
         action = input("What should I do?\n")
         action = action.upper()
         action = action.split(" ")
