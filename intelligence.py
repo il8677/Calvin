@@ -22,7 +22,7 @@ parsedLinksCount = 0
 q = queue.Queue
 threads = []
 threads2 = []
-times=[]
+times = []
 
 currentThreadsActive = 0
 
@@ -94,7 +94,7 @@ def summarise(link, word):
             final = 0
     else:
         final = getMainInformation(paragraph, word)
-    if(final != 0):
+    if (final != 0):
         return final
 
 
@@ -139,15 +139,15 @@ def getLinkInfo(aElement, betweenTag, word):
                 else:
                     parsedInformation[betweenTag.upper()] = summarise(parseLink, betweenTag)
                     endtime = time()
-                    timeSpent = math.floor((endtime-startTime) * currentThreadsActive-1)
+                    timeSpent = math.floor((endtime - startTime) * currentThreadsActive - 1)
                     times.append(timeSpent)
                     if len(times) > 10:
                         del times[0]
                     totalTimeSpent = 0
                     for t in times:
-                        totalTimeSpent+=t
-                    averageTimeSpent = math.floor(totalTimeSpent/len(times))
-                    status = str(math.floor(averageTimeSpent/60)) + "m Remaining"
+                        totalTimeSpent += t
+                    averageTimeSpent = math.floor(totalTimeSpent / len(times))
+                    status = str(math.floor(averageTimeSpent / 60)) + "m Remaining"
                     currentThreadsActive -= 1
                     del threads[threads.find(threading.current_thread())]
         except AttributeError:
@@ -260,7 +260,6 @@ def filter():
             delete = True
         if not delete:
             newList[key] = parsedInformation[key]
-
 
     parsedInformation = newList
 
@@ -385,9 +384,9 @@ def takeAction(action):
         threads.append(threading.Thread(target=selfExpand, args=(HYPER_DEFAULT_LINK, HYPER_DEFAULT_SEARCH)))
         currentThreadsActive += 1
     elif action[0] == "THREADS":
-        if(len(threads) + len(threads2) > 15):
+        if (len(threads) + len(threads2) > 15):
             print("There are " + str(len(threads2) + len(threads)) + " threads, display? y/n")
-            if(input("").upper() == "y"):
+            if (input("").upper() == "y"):
                 print("First Threads")
                 for thread in threads:
                     print(thread)

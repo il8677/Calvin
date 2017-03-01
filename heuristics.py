@@ -15,3 +15,43 @@ def checkFiles():
     except FileNotFoundError:
         print("[HEURISTICS : CHECK] Manifest missing, creating")
         open(manifest, "w")
+# NEURAL FILE FORMAT
+# Top line is information
+#
+#
+# Each line is a layer
+# Values are seperated by semi colons
+#
+# Number of nodes in layer; Subsequent weights;
+
+class node:
+    def __init__(self, weights):
+        self.weights = weights
+
+
+def readNeuralFile(path):
+    lines = open(path).read().split("\n")
+
+    for line in lines:
+        if(line[0] == "l"):
+            values = line.split(";")
+            del values[0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
