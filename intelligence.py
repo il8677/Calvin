@@ -56,19 +56,21 @@ def getMainInformation(text, searchString):
     if searchString not in text:
         return 0
     else:
-        position = 1
-        indexies = find_all(text, searchString)
-        for index in indexies:
-            # print("[DEBUG : MAIN INFO] Interating through index " + str(position) + "/" + str(getGeneratorLen(indexies)))
-            sentanceEnd = getNextStringIndexFromIndex(text, ".", index)
-            final += text[index:sentanceEnd]
-            final += "\n"
-            position += 1
+        for string in searchString.split(" "):
+            position = 1
+            indexies = find_all(text, string)
+            for index in indexies:
+                # print("[DEBUG : MAIN INFO] Interating through index " + str(position) + "/" + str(getGeneratorLen(indexies)))
+                sentanceEnd = getNextStringIndexFromIndex(text, ".", index)
+                final += text[index:sentanceEnd]
+                final += "\n"
+                position += 1
     return final
 
 
 def summarise(link, word):
-    # print("Parsing " + link)
+    word = str(word.upper())
+    print("Parsing " + link)
     try:
         with urllib.request.urlopen(link) as source:  # Parse Wikipedia Page
             http = source.read()
@@ -80,7 +82,7 @@ def summarise(link, word):
     # Inform user
     # print("Parsed " + soup.title.string)
     # print("Getting paragraph text...")
-    paragraph = soup.p.getText()
+    paragraph = soup.p.getText().upper()
     # print("Retrived text")
     # print("Retriving important information...")
     if word not in paragraph:
@@ -195,12 +197,16 @@ def go(action):
     if action == "PARSE":
         link = input("What do you want me to parse?\n")
         word = input("What do you want me to learn about?\n")
-        parsedInformation[word.upper] = summarise(link, word)
+        parsedInformation[word.upper()] = summarise(link, word)
         readLink = True
+    elif action == "PARSEN":
+        link = input("What do you want me to parse?\n")
+        word = input("What do you want me to learn about?\n")
+        parsedInformation[word.upper()] = summarise(link, word)
     elif action == "TEST":
         link = HYPER_DEFAULT_LINK
         word = HYPER_DEFAULT_SEARCH
-        parsedInformation[word.upper] = summarise(link, word)
+        parsedInformation[word.upper()] = summarise(link, word)
         readLink = True
     elif action == "LOAD":
         parsedInformation = pickle.load(open("save.p", "rb"))
@@ -328,7 +334,16 @@ def takeAction(action):
     global threads
     global currentThreadsActive
     if action[0] == "GET":
-        return "Information on " + action[1] + ":\n" + str(parsedInformation[action[1]])
+        values = ""
+        for item in action:
+            if item != "GET":
+                values += item
+                values += " "
+        values = values[:-1]
+        try:
+            return "Information on " + values + ":\n" + str(parsedInformation[values])
+        except KeyError:
+            return "Error, no such item " + values
     elif action[0] == "LIST":
         print("Listing " + str(len(parsedInformation)) + " entries")
         try:
